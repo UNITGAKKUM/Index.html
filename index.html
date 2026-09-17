@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Data Kecelakaan</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f6fa;color:#1f2937}
+header{background:#0f4c81;color:white;padding:18px 20px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:22px}header p{margin:5px 0 0;opacity:.85;font-size:13px}
+.container{max-width:1200px;margin:auto;padding:18px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.card{background:white;border-radius:12px;padding:16px;box-shadow:0 2px 8px #0000000d}.label{font-size:12px;color:#6b7280}.value{font-size:26px;font-weight:bold;margin-top:5px}
+.panel{background:white;border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 2px 8px #0000000d}
+h2{font-size:18px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+label{font-size:12px;font-weight:bold;color:#374151}input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-top:5px;font-size:14px}textarea{min-height:70px;resize:vertical}
+button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:bold}.primary{background:#0f4c81;color:white}.secondary{background:#e5e7eb;color:#111827}.danger{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:12px}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.empty{text-align:center;color:#6b7280;padding:25px}
+
+.vehicle{border:1px solid #dbe3ec;border-radius:10px;padding:14px;margin:10px 0;background:#fbfdff}
+.vehicle h3{font-size:15px;margin:0 0 12px}.subhead{font-size:13px;font-weight:bold;margin:14px 0 8px}
+.person{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px dashed #d1d5db;padding:10px 0}.person>div:has(.d-nama),.person>div:has(.ped-nama){grid-column:span 2}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:center;justify-content:center;padding:16px}.modal.show{display:flex}.modal-box{background:white;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:20px;box-shadow:0 10px 35px #0003}.modal-box h2{margin-bottom:8px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.detail-item{background:#f8fafc;padding:9px;border-radius:8px}.detail-item b{display:block;font-size:11px;color:#6b7280;margin-bottom:3px}.detail-section{margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px}.detail-table{min-width:0;margin-top:8px}.detail-table th,.detail-table td{border:1px solid #e5e7eb;padding:7px;font-size:12px}
+@media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr)}.grid,.filters{grid-template-columns:1fr}.person{grid-template-columns:1fr}.person>div:has(.d-nama),.person>div:has(.ped-nama){grid-column:span 1}.detail-grid{grid-template-columns:1fr}.container{padding:12px}.panel{padding:14px}}
+
+.print-area{display:none}
+.report-header{text-align:center;margin-bottom:18px}.report-header h1{font-size:20px;margin:0 0 5px}.report-header h2{font-size:16px;margin:0 0 5px}.report-meta{text-align:center;font-size:12px;color:#374151;margin-bottom:16px}.report-table{width:100%;border-collapse:collapse;min-width:0}.report-table th,.report-table td{border:1px solid #444;padding:6px 7px;font-size:10px}.report-table th{background:#eee;text-align:center}.report-table td.center{text-align:center}.report-total{margin-top:14px;width:55%;margin-left:auto;border-collapse:collapse}.report-total td{border:1px solid #444;padding:6px;font-size:11px}.signature{display:flex;justify-content:flex-end;margin-top:45px}.signature-box{width:230px;text-align:center;font-size:11px}.signature-space{height:65px}
+@media print{body{background:white}.container>*,header{display:none!important}.print-area{display:block!important;padding:12mm;font-family:Arial,sans-serif;color:#000}.print-area *{box-shadow:none!important}.report-table{page-break-inside:auto}.report-table tr{page-break-inside:avoid;page-break-after:auto}.report-header{page-break-after:avoid}.signature{page-break-inside:avoid}}
+
+.login-screen{position:fixed;inset:0;background:#f3f6fa;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}.login-box{background:white;width:min(420px,100%);padding:24px;border-radius:16px;box-shadow:0 10px 35px #0002}.login-box h2{margin:0 0 6px}.login-box p{color:#6b7280;font-size:13px;line-height:1.5}.login-error{color:#991b1b;background:#fee2e2;border-radius:8px;padding:9px;font-size:13px;margin:10px 0;display:none}.app-hidden{display:none!important}.top-actions{position:absolute;right:18px;top:16px;display:flex;gap:8px;align-items:center}.user-badge{font-size:12px;opacity:.9}@media(max-width:800px){.top-actions{position:static;margin-top:10px}.user-badge{display:none}}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="login-screen">
+ <div class="login-box">
+  <h2>🔐 Login APLIKASI DATA LAKA LANTAS</h2>
+  <p>Masuk menggunakan akun yang sudah dibuat di Supabase. Pendaftaran akun baru tidak tersedia.</p>
+  <div id="loginError" class="login-error"></div>
+  <label>Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="Email akun">
+  <label style="display:block;margin-top:10px">Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password">
+  <button id="loginButton" class="primary" style="width:100%;margin-top:14px" onclick="login()">🔑 Masuk</button>
+ </div>
+</div>
+<div id="appShell" class="app-hidden">
+<header><h1>📋 APLIKASI DATA LAKA LANTAS</h1><p>Catat, cari, dan rekap kejadian secara cepat.</p><div class="top-actions"><span id="userBadge" class="user-badge"></span><button class="secondary" onclick="logout()">Keluar</button></div></header>
+
+<div class="container">
+<section class="panel">
+<h2>📊 Dashboard Laporan</h2>
+<div class="filters" style="grid-template-columns:repeat(4,1fr)">
+ <button class="secondary" onclick="setPeriod('today')">Hari Ini</button>
+ <button class="secondary" onclick="setPeriod('week')">Minggu Ini</button>
+ <button class="secondary" onclick="setPeriod('month')">Bulan Ini</button>
+ <button class="secondary" onclick="setPeriod('year')">Tahun Ini</button>
+ <button class="primary" onclick="printReport()">🖨️ Cetak Laporan / PDF</button>
+</div>
+<div class="grid" style="margin-top:10px">
+ <div><label>Mulai</label><input id="dashFrom" type="date" onchange="updateDashboard()"></div>
+ <div><label>Sampai</label><input id="dashTo" type="date" onchange="updateDashboard()"></div>
+ <div><label>Kecamatan</label><select id="dashLocation" onchange="updateDashboard()"><option value="">Semua Kecamatan</option></select></div>
+ <div style="display:flex;align-items:end"><button class="primary" style="width:100%" onclick="clearPeriod()">Reset Periode</button></div>
+</div>
+<div class="grid" style="margin-top:14px">
+ <div class="card"><div class="label">Kejadian Periode</div><div class="value" id="dashTotal">0</div></div>
+ <div class="card"><div class="label">Meninggal</div><div class="value" id="dashMD">0</div></div>
+ <div class="card"><div class="label">Luka Berat</div><div class="value" id="dashLB">0</div></div>
+ <div class="card"><div class="label">Luka Ringan</div><div class="value" id="dashLR">0</div></div>
+</div>
+<div style="margin-top:16px"><h3 style="font-size:15px">Grafik Kejadian per Bulan</h3><canvas id="monthlyChart" height="180" style="width:100%;border:1px solid #eef2f7;border-radius:8px"></canvas></div><div style="margin-top:16px"><h3 style="font-size:15px">Rekap Per Kecamatan</h3><div class="table-wrap"><table><thead><tr><th>Kecamatan</th><th>Kejadian</th><th>Meninggal</th><th>Luka Berat</th><th>Luka Ringan</th><th>Kerugian</th></tr></thead><tbody id="locationBody"></tbody></table></div></div>
+</section>
+
+
+<section class="cards">
+<div class="card"><div class="label">Total Kejadian</div><div class="value" id="total">0</div></div>
+<div class="card"><div class="label">Meninggal Dunia</div><div class="value" id="meninggal">0</div></div>
+<div class="card"><div class="label">Luka-luka</div><div class="value" id="luka">0</div></div>
+<div class="card"><div class="label">Kerugian Material</div><div class="value" id="rugi">Rp0</div></div>
+</section>
+
+<section class="panel">
+<h2 id="formTitle">Tambah Kejadian</h2>
+<div class="grid">
+<div><label>Nomor Laporan</label><input id="nomor" placeholder="Contoh: 001/IX/2026"></div>
+<div><label>Tanggal</label><input id="tanggal" type="date"></div>
+<div><label>Waktu</label><input id="waktu" type="time"></div>
+<div><label>Lokasi / Tempat Kejadian</label><input id="lokasi" placeholder="Jalan, RT/RW, desa, kecamatan"></div>
+ <div><label>Kecamatan</label><input id="kecamatan" placeholder="Masukkan nama kecamatan"></div>
+  <div><label>Petugas Pelapor</label><input id="petugasPelapor" placeholder="Masukkan nama petugas pelapor"></div>
+<div><label>Jenis Tabrakan</label><select id="jenis">
+<option>Tabrak Depan</option>
+<option>Tabrak Samping</option>
+<option>Tabrak Sisi</option>
+<option>Tabrak Belakang</option>
+<option>Tabrak Lari</option>
+<option>Tabrak manusia</option>
+<option>Laka Tunggal/selip</option>
+</select></div>
+
+
+
+<div><label>Kerugian Material (Rp)</label><input id="kerugian" type="number" min="0" value="0"></div>
+<div><label>Rekap Korban (otomatis)</label><input id="korbanSummary" readonly value="Meninggal: 0 | Luka Berat: 0 | Luka Ringan: 0"></div>
+<div style="grid-column:1/-1"><label>Keterangan</label><textarea id="keterangan" placeholder="Kronologi singkat atau keterangan lain"></textarea></div>
+</div>
+<div style="border-top:1px solid #e5e7eb;margin-top:18px;padding-top:18px">
+<h2>👥 Pihak yang Terlibat</h2>
+<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px">
+ <label style="font-size:14px;font-weight:bold"><input id="pihakKendaraan" type="checkbox" checked onchange="togglePihakType()" style="width:auto;margin-right:6px"> Kendaraan</label>
+ <label style="font-size:14px;font-weight:bold"><input id="pihakPejalan" type="checkbox" onchange="togglePihakType()" style="width:auto;margin-right:6px"> Pejalan Kaki</label>
+</div>
+<div id="kendaraanSection">
+<h2>🚗 Kendaraan, Pengemudi & Penumpang</h2>
+<p style="font-size:13px;color:#6b7280;margin-top:-6px">Tambahkan kendaraan yang terlibat. Setiap kendaraan dapat memiliki 1 pengemudi dan beberapa penumpang.</p>
+<div id="vehicleList"></div>
+<button type="button" class="primary" onclick="addVehicle()">＋ Tambah Kendaraan</button>
+</div>
+<div id="pejalanSection" style="margin-top:18px">
+<h2>🚶 Pejalan Kaki</h2>
+<p style="font-size:13px;color:#6b7280;margin-top:-6px">Tambahkan pejalan kaki yang terlibat, termasuk kondisi korban.</p>
+<div id="pedestrianList"></div>
+<button class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
+</div>
+
+</div>
+<div class="actions"><button class="primary" onclick="simpan()">💾 Simpan Data</button><button class="secondary" onclick="resetForm()">↩ Reset</button></div>
+</section>
+
+
+<section class="panel">
+<h2>Daftar Kejadian</h2>
+<div class="filters">
+<input id="cari" placeholder="🔎 Cari lokasi/nomor/jenis..." oninput="render()">
+<input id="dari" type="date" onchange="render()">
+<input id="sampai" type="date" onchange="render()">
+<button class="primary" onclick="exportExcel()">📊 Export Excel</button>
+</div>
+<div class="table-wrap"><table><thead><tr>
+<th>No</th><th>Nomor</th><th>Tanggal & Waktu</th><th>Lokasi</th><th>Kecamatan</th><th>Petugas Pelapor</th><th>Jenis</th><th>Korban</th><th>Kerugian</th><th>Aksi</th>
+</tr></thead><tbody id="tbody"></tbody></table></div>
+</section>
+<div id="printArea" class="print-area"></div>
+<div id="viewModal" class="modal" onclick="if(event.target===this)closeView()"><div class="modal-box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>👁️ Detail Kejadian</h2><button class="secondary" onclick="closeView()">✕ Tutup</button></div><div id="viewContent"></div></div></div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL="https://frewqzjmspruwphxkoul.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_q61ir6gx-kbN9JILXtw4mQ_gXAIiRob";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let data=[];
+let editId=null;
+const $=id=>document.getElementById(id);
+const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0);
+
+async function simpan(){
+ const kendaraan=collectVehicles(),pejalanKaki=collectPedestrians();
+ const korban=calculateVictims(kendaraan,pejalanKaki);
+ const item={nomor:$('nomor').value.trim(),tanggal:$('tanggal').value,waktu:$('waktu').value||null,
+ lokasi:$('lokasi').value.trim(),kecamatan:$('kecamatan').value.trim(),petugas_pelapor:$('petugasPelapor').value.trim(),jenis:$('jenis').value,md:korban.md,lb:korban.lb,lr:korban.lr,
+ kerugian:+$('kerugian').value||0,keterangan:$('keterangan').value.trim(),kendaraan,pejalan_kaki:pejalanKaki};
+ if(!item.tanggal||!item.lokasi||!item.kecamatan||!item.petugas_pelapor){alert('Tanggal, lokasi, kecamatan, dan petugas pelapor wajib diisi.');return}
+ const btn=document.querySelector('.actions .primary'); if(btn)btn.disabled=true;
+ try{
+  let error;
+  if(editId){({error}=await sb.from('kejadian').update(item).eq('id',editId));}
+  else {const result=await sb.from('kejadian').insert(item); error=result.error;}
+  if(error)throw error;
+  await loadData(); resetForm(); render(); alert(editId?'Data berhasil diperbarui.':'Data berhasil disimpan ke database online.');
+ }catch(e){alert('Gagal menyimpan data: '+(e.message||e));}
+ finally{if(btn)btn.disabled=false;}
+}
+function edit(id){
+ const x=data.find(a=>a.id===id);if(!x)return;editId=id;$('formTitle').textContent='Edit Kejadian';
+ ['nomor','tanggal','waktu','lokasi','kecamatan','petugasPelapor','jenis','kerugian','keterangan'].forEach(k=>$(k).value=x[k]??'');
+ $('vehicleList').innerHTML=''; vehicleCount=0; (x.kendaraan||[]).forEach(v=>addVehicle(v)); $('pedestrianList').innerHTML=''; pedestrianCount=0; (x.pejalanKaki||[]).forEach(pp=>addPedestrian(pp)); $('pihakKendaraan').checked=(x.kendaraan||[]).length>0; $('pihakPejalan').checked=(x.pejalanKaki||[]).length>0; if(!$('pihakKendaraan').checked&&!$('pihakPejalan').checked)$('pihakKendaraan').checked=true; togglePihakType(); window.scrollTo({top:0,behavior:'smooth'});
+}
+async function hapus(id){if(confirm('Hapus data kejadian ini?')){try{const {error}=await sb.from('kejadian').delete().eq('id',id);if(error)throw error;await loadData();render();}catch(e){alert('Gagal menghapus data: '+(e.message||e));}}}
+function getVictimNames(x){
+ const md=[],luka=[];
+ const add=(person)=>{if(!person||!person.nama)return; if(person.kondisi==='Meninggal Dunia')md.push(person.nama); else if(person.kondisi==='Luka Berat'||person.kondisi==='Luka Ringan')luka.push(person.nama)};
+ (x.kendaraan||[]).forEach(v=>{add(v.pengemudi);(v.penumpang||[]).forEach(add)});
+ (x.pejalanKaki||[]).forEach(add);
+ return {md:[...new Set(md)],luka:[...new Set(luka)]};
+}
+function lihat(id){
+ const x=data.find(a=>String(a.id)===String(id)); if(!x){alert('Data kejadian tidak ditemukan.');return;}
+ const names=getVictimNames(x);
+ const people=[];
+ (x.kendaraan||[]).forEach(v=>{
+   if(v.pengemudi) people.push({kategori:'Pengemudi',plat:v.plat||'-',...v.pengemudi});
+   (v.penumpang||[]).forEach(pp=>people.push({kategori:'Penumpang',plat:v.plat||'-',...pp}));
+ });
+ (x.pejalanKaki||[]).forEach(pp=>people.push({kategori:'Pejalan Kaki',plat:'-',...pp}));
+ const peopleHtml=people.length?`<div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Nama</th><th>Plat Nomor</th><th>NIK</th><th>Jenis Kelamin</th><th>Umur</th><th>Kondisi</th><th>Alamat</th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.kategori)}</td><td>${esc(p.nama||'-')}</td><td>${esc(p.plat||'-')}</td><td>${esc(p.nik||'-')}</td><td>${esc(p.gender||'-')}</td><td>${esc(p.umur||'-')}</td><td>${esc(p.kondisi||'-')}</td><td>${esc(p.alamat||'-')}</td></tr>`).join('')}</tbody></table></div>`:'<p>Tidak ada data orang/korban yang dicatat.</p>';
+ $('viewContent').innerHTML=`<div class="detail-grid"><div><b>Nomor Laporan</b><br>${esc(x.nomor||'-')}</div><div><b>Tanggal / Waktu</b><br>${fmt(x.tanggal)} ${esc(x.waktu||'-')}</div><div><b>Lokasi</b><br>${esc(x.lokasi||'-')}</div><div><b>Kecamatan</b><br>${esc(x.kecamatan||'-')}</div><div><b>Petugas Pelapor</b><br>${esc(x.petugasPelapor||'-')}</div><div><b>Jenis Tabrakan</b><br>${esc(x.jenis||'-')}</div><div><b>Korban</b><br>MD: ${x.md||0} | LB: ${x.lb||0} | LR: ${x.lr||0}</div><div><b>Kerugian Material</b><br>${rupiah(x.kerugian)}</div></div><hr><h3>Nama Korban Meninggal Dunia</h3><p>${names.md.length?names.md.map(esc).join(', '):'-'}</p><h3>Nama Korban Luka</h3><p>${names.luka.length?names.luka.map(esc).join(', '):'-'}</p><h3>Data Orang/Korban Terlibat</h3>${peopleHtml}<h3>Keterangan</h3><p>${esc(x.keterangan||'-')}</p>`;
+ $('viewModal').classList.add('show');
+}
+function closeView(){$('viewModal').classList.remove('show')} 
+
+function resetForm(){editId=null; $('vehicleList').innerHTML=''; vehicleCount=0; $('pedestrianList').innerHTML=''; pedestrianCount=0;$('formTitle').textContent='Tambah Kejadian';['nomor','tanggal','waktu','lokasi','kecamatan','petugasPelapor','keterangan'].forEach(k=>$(k).value='');['kerugian'].forEach(k=>$(k).value=0); $('korbanSummary').value='Meninggal: 0 | Luka Berat: 0 | Luka Ringan: 0';$('jenis').selectedIndex=0;$('pihakKendaraan').checked=true;$('pihakPejalan').checked=false;togglePihakType()}
+function render(){
+ const q=$('cari').value.toLowerCase(),d1=$('dari').value,d2=$('sampai').value;
+ const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2)).sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
+ $('total').textContent=rows.length;$('meninggal').textContent=rows.reduce((s,x)=>s+x.md,0);$('luka').textContent=rows.reduce((s,x)=>s+x.lb+x.lr,0);$('rugi').textContent=rupiah(rows.reduce((s,x)=>s+x.kerugian,0));
+ $('tbody').innerHTML=rows.length?rows.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nomor||'-')}</td><td>${fmt(x.tanggal)} ${x.waktu||''}</td><td>${esc(x.lokasi)}</td><td>${esc(x.kecamatan||'-')}</td><td>${esc(x.petugasPelapor||'-')}</td><td>${esc(x.jenis)}</td><td>MD: ${x.md}<br>LB: ${x.lb}<br>LR: ${x.lr}</td><td>${rupiah(x.kerugian)}</td><td><button class="primary" onclick="lihat('${x.id}')">Lihat</button> <button class="secondary" onclick="edit('${x.id}')">Edit</button> <button class="danger" onclick="hapus('${x.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="10" class="empty">Belum ada data.</td></tr>'; updateDashboard();
+}
+function fmt(s){if(!s)return'-';const [y,m,d]=s.split('-');return `${d}-${m}-${y}`}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function exportExcel(){
+ const headers=['No','Nomor Laporan','Tanggal','Waktu','Lokasi','Kecamatan','Petugas Pelapor','Jenis Tabrakan','Meninggal Dunia','Nama Korban Meninggal Dunia','Luka Berat','Luka Ringan','Nama Korban Luka','Kerugian Material (Rp)','Keterangan'];
+ const q=$('cari').value.toLowerCase(),d1=$('dari').value,d2=$('sampai').value;
+ const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2))
+   .sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
+ const detail=[headers,...rows.map((x,i)=>{const names=getVictimNames(x);return [i+1,x.nomor,x.tanggal,x.waktu,x.lokasi,x.kecamatan,x.petugasPelapor||'',x.jenis,x.md,names.md.join(', '),x.lb,x.lr,names.luka.join(', '),x.kerugian,x.keterangan]})];
+ const kendaraan=[['No','Nomor Laporan','Plat Nomor','Jenis Kendaraan','Merek/Tipe','Kondisi Kendaraan']];
+ const pengemudi=[['No','Nomor Laporan','Plat Nomor','Nama','NIK','Jenis Kelamin','Umur','Alamat','Nomor SIM','Jenis SIM','Kondisi']];
+ const penumpang=[['No','Nomor Laporan','Plat Nomor','Nama','NIK','Jenis Kelamin','Umur','Alamat','Kondisi','Keterangan']];
+ const pihak=[['No','Nomor Laporan','Kategori','Identitas','Plat Nomor','Kondisi']];
+ const pejalanKaki=[['No','Nomor Laporan','Nama','NIK','Jenis Kelamin','Umur','Alamat','Kondisi','Keterangan']];
+ let nk=1,np=1,nn=1,nph=1,npg=1;
+ rows.forEach(r=>{
+   (r.pejalanKaki||[]).forEach(pp=>{
+     pejalanKaki.push([npg++,r.nomor,pp.nama,pp.nik,pp.gender,pp.umur,pp.alamat,pp.kondisi,pp.keterangan]);
+     pihak.push([nph++,r.nomor,'Pejalan Kaki',pp.nama,'',pp.kondisi]);
+   });
+   (r.kendaraan||[]).forEach(v=>{
+     kendaraan.push([nk++,r.nomor,v.plat,v.jenis,v.merek,v.kondisi]);
+     if(v.pengemudi) pengemudi.push([nn++,r.nomor,v.plat,v.pengemudi.nama,v.pengemudi.nik,v.pengemudi.gender,v.pengemudi.umur,v.pengemudi.alamat,v.pengemudi.sim,v.pengemudi.jenisSim,v.pengemudi.kondisi]);
+     pihak.push([nph++,r.nomor,'Kendaraan',v.merek||v.jenis,v.plat,v.kondisi]);
+     (v.penumpang||[]).forEach(pp=>{
+       penumpang.push([np++,r.nomor,v.plat,pp.nama,pp.nik,pp.gender,pp.umur,pp.alamat,pp.kondisi,pp.keterangan]);
+       pihak.push([nph++,r.nomor,'Penumpang',pp.nama,v.plat,pp.kondisi]);
+     });
+   });
+ });
+ let totalMD=0,totalLB=0,totalLR=0;
+ rows.forEach(r=>{
+   const v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);
+   totalMD+=v.md; totalLB+=v.lb; totalLR+=v.lr;
+ });
+ const totalRugi=rows.reduce((s,x)=>s+x.kerugian,0);
+ const rekap=[['REKAP DATA KECELAKAAN'],[],['Periode',d1||'Semua','s.d.',d2||'Semua'],[],['Total Kejadian',rows.length],['Meninggal Dunia',totalMD],['Luka Berat',totalLB],['Luka Ringan',totalLR],['Kerugian Material (Rp)',totalRugi]];
+ const kecGroups={};
+  rows.forEach(r=>{
+    const k=(r.kecamatan||'Belum Diisi').trim()||'Belum Diisi';
+    if(!kecGroups[k])kecGroups[k]={n:0,md:0,lb:0,lr:0,rugi:0};
+    const g=kecGroups[k],v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);
+    g.n++;g.md+=v.md;g.lb+=v.lb;g.lr+=v.lr;g.rugi+=Number(r.kerugian)||0;
+  });
+  const rekapKecamatan=[['No','Kecamatan','Kejadian','Meninggal Dunia','Luka Berat','Luka Ringan','Kerugian Material (Rp)']];
+  Object.entries(kecGroups).sort((a,b)=>a[0].localeCompare(b[0],'id')).forEach(([k,g],i)=>{
+    rekapKecamatan.push([i+1,k,g.n,g.md,g.lb,g.lr,g.rugi]);
+  });
+  const wb=XLSX.utils.book_new();
+ [['Data Laporan',detail],['Kendaraan',kendaraan],['Pengemudi',pengemudi],['Penumpang',penumpang],['Pejalan Kaki',pejalanKaki],['Pihak Terlibat',pihak],['Rekap',rekap],['Rekap Kecamatan',rekapKecamatan]].forEach(([name,arr])=>{
+   const ws=XLSX.utils.aoa_to_sheet(arr);
+   XLSX.utils.book_append_sheet(wb,ws,name);
+ });
+ XLSX.writeFile(wb,'Rekap_Data_Kecelakaan.xlsx');
+}
+
+function normalizeRow(x){return {...x,petugasPelapor:x.petugas_pelapor||'',pejalanKaki:Array.isArray(x.pejalan_kaki)?x.pejalan_kaki:[],kendaraan:Array.isArray(x.kendaraan)?x.kendaraan:[]};}
+async function loadData(){
+ const {data:rows,error}=await sb.from('kejadian').select('*').order('tanggal',{ascending:false}).order('waktu',{ascending:false});
+ if(error)throw error; data=(rows||[]).map(normalizeRow); updateLocationOptions();
+}
+function showLoginError(msg){const el=$('loginError');el.textContent=msg;el.style.display=msg?'block':'none';}
+async function login(){
+ showLoginError(''); const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
+ if(!email||!password){showLoginError('Email dan password wajib diisi.');return}
+ const btn=$('loginButton');btn.disabled=true;btn.textContent='Memproses...';
+ try{const {data:authData,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;await startApp(authData.user);}
+ catch(e){showLoginError('Login gagal. Periksa email dan password.');}
+ finally{btn.disabled=false;btn.textContent='🔑 Masuk';}
+}
+async function startApp(user){currentUser=user;$('userBadge').textContent=user.email||'';$('loginScreen').classList.add('app-hidden');$('appShell').classList.remove('app-hidden');try{await loadData();render();}catch(e){$('loginScreen').classList.remove('app-hidden');$('appShell').classList.add('app-hidden');showLoginError('Gagal mengambil data dari database: '+(e.message||e));}}
+async function logout(){await sb.auth.signOut();currentUser=null;data=[];$('appShell').classList.add('app-hidden');$('loginScreen').classList.remove('app-hidden');$('loginEmail').value='';$('loginPassword').value='';}
+let currentUser=null;
+sb.auth.onAuthStateChange((event,session)=>{if(session&&session.user){startApp(session.user);}else{$('loginScreen').classList.remove('app-hidden');}});
+
+function togglePihakType(){
+ const k=$('pihakKendaraan'), p=$('pihakPejalan');
+ if(k) $('kendaraanSection').style.display=k.checked?'block':'none';
+ if(p) $('pejalanSection').style.display=p.checked?'block':'none';
+ updateVictimSummary();
+}
+function calculateVictims(kendaraan, pejalanKaki){
+ let md=0,lb=0,lr=0;
+ kendaraan.forEach(v=>{
+  const people=[v.pengemudi,...(v.penumpang||[])];
+  people.forEach(x=>{if(x.kondisi==='Meninggal Dunia')md++;else if(x.kondisi==='Luka Berat')lb++;else if(x.kondisi==='Luka Ringan')lr++;});
+ });
+ pejalanKaki.forEach(x=>{if(x.kondisi==='Meninggal Dunia')md++;else if(x.kondisi==='Luka Berat')lb++;else if(x.kondisi==='Luka Ringan')lr++;});
+ return {md,lb,lr};
+}
+function updateVictimSummary(){
+ const k=collectVehicles(),p=collectPedestrians(),v=calculateVictims(k,p);
+ $('korbanSummary').value=`Meninggal: ${v.md} | Luka Berat: ${v.lb} | Luka Ringan: ${v.lr}`;
+}
+let vehicleCount=0;
+function addVehicle(v={}) {
+ vehicleCount++;
+ const id=vehicleCount, list=$('vehicleList');
+ const div=document.createElement('div'); div.className='vehicle'; div.id='vehicle-'+id;
+ div.innerHTML=`
+ <h3>Kendaraan ${id}</h3>
+ <div class="grid">
+  <div><label>Plat Nomor</label><input class="v-plat" placeholder="B 1234 XX" value="${esc(v.plat||'')}"></div>
+  <div><label>Jenis Kendaraan</label><select class="v-jenis"><option ${v.jenis==='Sepeda Motor'?'selected':''}>Sepeda Motor</option><option ${v.jenis==='Mobil'?'selected':''}>Mobil</option><option ${v.jenis==='Truk'?'selected':''}>Truk</option><option ${v.jenis==='Bus'?'selected':''}>Bus</option><option ${v.jenis==='Kendaraan lainnya'?'selected':''}>Kendaraan lainnya</option></select></div>
+  <div><label>Merek / Tipe</label><input class="v-merek" value="${esc(v.merek||'')}"></div>
+  <div><label>Kondisi Kendaraan</label><input class="v-kondisi" value="${esc(v.kondisi||'')}"></div>
+ </div>
+ <div class="subhead">👤 Pengemudi</div>
+ <div class="person">
+  <div><label>Nama</label><input class="d-nama" value="${esc(v.pengemudi?.nama||'')}"></div><div><label>NIK</label><input class="d-nik" value="${esc(v.pengemudi?.nik||'')}"></div><div><label>Jenis Kelamin</label><select class="d-gender"><option>Laki-laki</option><option ${v.pengemudi?.gender==='Perempuan'?'selected':''}>Perempuan</option></select></div>
+  <div><label>Umur</label><input class="d-umur" type="number" min="0" value="${v.pengemudi?.umur||''}"></div><div><label>Alamat</label><input class="d-alamat" value="${esc(v.pengemudi?.alamat||'')}"></div><div><label>Nomor SIM</label><input class="d-sim" value="${esc(v.pengemudi?.sim||'')}"></div>
+  <div><label>Jenis SIM</label><input class="d-jenisSim" placeholder="A / C / B1..." value="${esc(v.pengemudi?.jenisSim||'')}"></div><div><label>Kondisi</label><select class="d-kondisi"><option ${v.pengemudi?.kondisi==='Tidak Luka'?'selected':''}>Tidak Luka</option><option ${v.pengemudi?.kondisi==='Luka Ringan'?'selected':''}>Luka Ringan</option><option ${v.pengemudi?.kondisi==='Luka Berat'?'selected':''}>Luka Berat</option><option ${v.pengemudi?.kondisi==='Meninggal Dunia'?'selected':''}>Meninggal Dunia</option></select></div>
+ </div>
+ <div class="subhead">👥 Penumpang</div>
+ <div class="passengers"></div>
+ <button class="secondary" onclick="addPassenger(${id})">＋ Tambah Penumpang</button>
+ <button class="danger" onclick="this.closest('.vehicle').remove()">Hapus Kendaraan</button>`;
+ list.appendChild(div);
+ (v.penumpang||[]).forEach(pp=>addPassenger(id,pp));
+}
+function addPassenger(id,p={}) {
+ const box=document.querySelector('#vehicle-'+id+' .passengers'), n=box.children.length+1, row=document.createElement('div'); row.className='person'; row.innerHTML=`
+ <div><label>Nama Penumpang ${n}</label><input class="p-nama" value="${esc(p.nama||'')}"></div><div><label>NIK</label><input class="p-nik" value="${esc(p.nik||'')}"></div><div><label>Jenis Kelamin</label><select class="p-gender"><option>Laki-laki</option><option ${p.gender==='Perempuan'?'selected':''}>Perempuan</option></select></div>
+ <div><label>Umur</label><input class="p-umur" type="number" min="0" value="${p.umur||''}"></div><div><label>Alamat</label><input class="p-alamat" value="${esc(p.alamat||'')}"></div><div><label>Kondisi</label><select class="p-kondisi"><option ${p.kondisi==='Tidak Luka'?'selected':''}>Tidak Luka</option><option ${p.kondisi==='Luka Ringan'?'selected':''}>Luka Ringan</option><option ${p.kondisi==='Luka Berat'?'selected':''}>Luka Berat</option><option ${p.kondisi==='Meninggal Dunia'?'selected':''}>Meninggal Dunia</option></select></div>
+ <div><label>Keterangan</label><input class="p-keterangan" value="${esc(p.keterangan||'')}"></div>`;
+ box.appendChild(row);
+}
+function collectVehicles(){
+ return [...document.querySelectorAll('.vehicle')].map(v=>({
+  plat:v.querySelector('.v-plat').value.trim(),jenis:v.querySelector('.v-jenis').value,merek:v.querySelector('.v-merek').value.trim(),kondisi:v.querySelector('.v-kondisi').value.trim(),
+  pengemudi:{nama:v.querySelector('.d-nama').value.trim(),nik:v.querySelector('.d-nik').value.trim(),gender:v.querySelector('.d-gender').value,umur:+v.querySelector('.d-umur').value||0,alamat:v.querySelector('.d-alamat').value.trim(),sim:v.querySelector('.d-sim').value.trim(),jenisSim:v.querySelector('.d-jenisSim').value.trim(),kondisi:v.querySelector('.d-kondisi').value.trim()},
+  penumpang:[...v.querySelectorAll('.passengers .person')].map(p=>({nama:p.querySelector('.p-nama').value.trim(),nik:p.querySelector('.p-nik').value.trim(),gender:p.querySelector('.p-gender').value,umur:+p.querySelector('.p-umur').value||0,alamat:p.querySelector('.p-alamat').value.trim(),kondisi:p.querySelector('.p-kondisi').value.trim(),keterangan:p.querySelector('.p-keterangan').value.trim()}))
+ }));
+}
+let pedestrianCount=0;
+function addPedestrian(p={}) {
+ pedestrianCount++;
+ const id=pedestrianCount, list=$('pedestrianList');
+ const div=document.createElement('div'); div.className='vehicle'; div.id='ped-'+id;
+ div.innerHTML=`
+ <h3>Pejalan Kaki ${id}</h3>
+ <div class="person">
+  <div><label>Nama</label><input class="ped-nama" value="${esc(p.nama||'')}"></div>
+  <div><label>NIK</label><input class="ped-nik" value="${esc(p.nik||'')}"></div>
+  <div><label>Jenis Kelamin</label><select class="ped-gender"><option>Laki-laki</option><option ${p.gender==='Perempuan'?'selected':''}>Perempuan</option></select></div>
+  <div><label>Umur</label><input class="ped-umur" type="number" min="0" value="${p.umur||''}"></div>
+  <div><label>Alamat</label><input class="ped-alamat" value="${esc(p.alamat||'')}"></div>
+  <div><label>Kondisi Korban</label><select class="ped-kondisi">
+   <option ${p.kondisi==='Tidak Luka'?'selected':''}>Tidak Luka</option>
+   <option ${p.kondisi==='Luka Ringan'?'selected':''}>Luka Ringan</option>
+   <option ${p.kondisi==='Luka Berat'?'selected':''}>Luka Berat</option>
+   <option ${p.kondisi==='Meninggal Dunia'?'selected':''}>Meninggal Dunia</option>
+  </select></div>
+  <div style="grid-column:1/-1"><label>Keterangan</label><input class="ped-keterangan" value="${esc(p.keterangan||'')}"></div>
+ </div>
+ <button class="danger" onclick="this.closest('.vehicle').remove()">Hapus Pejalan Kaki</button>`;
+ list.appendChild(div);
+}
+function collectPedestrians(){
+ return [...document.querySelectorAll('#pedestrianList .vehicle')].map(v=>({
+  nama:v.querySelector('.ped-nama').value.trim(),nik:v.querySelector('.ped-nik').value.trim(),gender:v.querySelector('.ped-gender').value,
+  umur:+v.querySelector('.ped-umur').value||0,alamat:v.querySelector('.ped-alamat').value.trim(),kondisi:v.querySelector('.ped-kondisi').value,
+  keterangan:v.querySelector('.ped-keterangan').value.trim()
+ }));
+}
+
+document.addEventListener('input', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
+document.addEventListener('change', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
+togglePihakType();
+setPeriod('month');
+function isoDate(d){return d.toISOString().slice(0,10)}
+function setPeriod(type){
+ const now=new Date(), to=isoDate(now); let from=new Date(now);
+ if(type==='today'){}
+ if(type==='week'){const day=(now.getDay()+6)%7;from.setDate(now.getDate()-day)}
+ if(type==='month')from=new Date(now.getFullYear(),now.getMonth(),1)
+ if(type==='year')from=new Date(now.getFullYear(),0,1)
+ $('dashFrom').value=isoDate(from); $('dashTo').value=to; updateDashboard();
+}
+function clearPeriod(){$('dashFrom').value='';$('dashTo').value='';$('dashLocation').value='';updateDashboard()}
+function dashboardRows(){
+ const d1=$('dashFrom').value,d2=$('dashTo').value,loc=$('dashLocation').value;
+ return data.filter(x=>(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2)&&(!loc||x.kecamatan===loc));
+}
+function updateLocationOptions(){
+ const current=$('dashLocation').value;
+ const locs=[...new Set(data.map(x=>x.kecamatan).filter(Boolean))].sort();
+ $('dashLocation').innerHTML='<option value="">Semua Kecamatan</option>'+locs.map(l=>`<option>${esc(l)}</option>`).join('');
+ if(locs.includes(current))$('dashLocation').value=current;
+}
+function updateDashboard(){
+ updateLocationOptions();
+ const rows=dashboardRows();
+ let md=0,lb=0,lr=0;
+ rows.forEach(r=>{const v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);md+=v.md;lb+=v.lb;lr+=v.lr});
+ $('dashTotal').textContent=rows.length;$('dashMD').textContent=md;$('dashLB').textContent=lb;$('dashLR').textContent=lr;
+ const groups={};
+ rows.forEach(r=>{const k=(r.kecamatan||'Belum Diisi').trim()||'Belum Diisi';if(!groups[k])groups[k]={n:0,md:0,lb:0,lr:0,rugi:0};const g=groups[k],v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);g.n++;g.md+=v.md;g.lb+=v.lb;g.lr+=v.lr;g.rugi+=r.kerugian||0});
+ const entries=Object.entries(groups).sort((a,b)=>b[1].n-a[1].n);
+  const totalKec=entries.reduce((s,[,g])=>s+g.n,0);
+  const totalMd=entries.reduce((s,[,g])=>s+g.md,0);
+  const totalLb=entries.reduce((s,[,g])=>s+g.lb,0);
+  const totalLr=entries.reduce((s,[,g])=>s+g.lr,0);
+  const totalRugi=entries.reduce((s,[,g])=>s+g.rugi,0);
+  $('locationBody').innerHTML=entries.length
+    ?entries.map(([l,g])=>`<tr><td>${esc(l)}</td><td>${g.n}</td><td>${g.md}</td><td>${g.lb}</td><td>${g.lr}</td><td>${rupiah(g.rugi)}</td></tr>`).join('')
+      +`<tr style="font-weight:bold;background:#f1f5f9"><td>TOTAL</td><td>${totalKec}</td><td>${totalMd}</td><td>${totalLb}</td><td>${totalLr}</td><td>${rupiah(totalRugi)}</td></tr>`
+    :'<tr><td colspan="6" class="empty">Belum ada data pada periode ini.</td></tr>';
+  drawMonthly(rows);
+}
+function drawMonthly(rows){
+ const c=$('monthlyChart'),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=c.clientWidth||600,h=180;
+ c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const g={};rows.forEach(r=>{const k=(r.tanggal||'').slice(0,7);if(k)g[k]=(g[k]||0)+1});
+ const keys=Object.keys(g).sort(); if(!keys.length){ctx.font='14px Arial';ctx.fillText('Belum ada data pada periode ini.',15,35);return}
+ const max=Math.max(...keys.map(k=>g[k]),1),left=45,bottom=35,top=20,plotW=w-left-15,plotH=h-top-bottom;
+ ctx.font='11px Arial';ctx.textAlign='center';
+ keys.forEach((k,i)=>{const x=left+(i+.5)*plotW/keys.length,bh=g[k]/max*plotH;ctx.fillRect(x-12,top+plotH-bh,24,bh);ctx.fillText(k.slice(5),x,h-15);ctx.fillText(g[k],x,top+plotH-bh-5)});
+ ctx.textAlign='left';ctx.fillText('Jumlah kejadian',8,12);
+}
+
+function printReport(){
+ const rows=dashboardRows().sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
+ let md=0,lb=0,lr=0,rugi=0;
+ rows.forEach(r=>{const v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);md+=v.md;lb+=v.lb;lr+=v.lr;rugi+=Number(r.kerugian)||0});
+ const from=$('dashFrom').value,to=$('dashTo').value,loc=$('dashLocation').value;
+ const periode=from&&to?`${fmt(from)} s.d. ${fmt(to)}`:from?`Mulai ${fmt(from)}`:to?`Sampai ${fmt(to)}`:'Semua periode';
+ const lokasi=loc||'Semua lokasi';
+ const body=rows.length?rows.map((r,i)=>{const v=calculateVictims(r.kendaraan||[],r.pejalanKaki||[]);return `<tr><td class="center">${i+1}</td><td>${esc(r.nomor||'-')}</td><td>${fmt(r.tanggal)}<br>${esc(r.waktu||'-')}</td><td>${esc(r.lokasi||'-')}</td><td>${esc(r.kecamatan||'-')}</td><td>${esc(r.petugasPelapor||'-')}</td><td>${esc(r.jenis||'-')}</td><td class="center">${v.md}</td><td class="center">${v.lb}</td><td class="center">${v.lr}</td><td style="text-align:right">${rupiah(r.kerugian)}</td></tr>`}).join(''):'<tr><td colspan="11" class="center">Tidak ada data pada periode yang dipilih.</td></tr>';
+ $('printArea').innerHTML=`<div class="report-header"><h1>LAPORAN REKAPITULASI KEJADIAN KECELAKAAN</h1><h2>REKAPITULASI PERIODE</h2></div><div class="report-meta"><b>Periode:</b> ${periode} &nbsp;&nbsp; | &nbsp;&nbsp; <b>Lokasi:</b> ${esc(lokasi)}</div><table class="report-table"><thead><tr><th>No</th><th>Nomor Laporan</th><th>Tanggal / Waktu</th><th>Lokasi</th><th>Kecamatan</th><th>Petugas Pelapor</th><th>Jenis Tabrakan</th><th>MD</th><th>LB</th><th>LR</th><th>Kerugian Material</th></tr></thead><tbody>${body}</tbody></table><table class="report-total"><tr><td><b>Total Kejadian</b></td><td>${rows.length}</td></tr><tr><td>Meninggal Dunia</td><td>${md}</td></tr><tr><td>Luka Berat</td><td>${lb}</td></tr><tr><td>Luka Ringan</td><td>${lr}</td></tr><tr><td><b>Total Kerugian Material</b></td><td><b>${rupiah(rugi)}</b></td></tr></table><div class="signature"><div class="signature-box">Mengetahui,<div class="signature-space"></div><b>____________________________</b><br>Nama / Jabatan</div></div>`;
+ window.print();
+}
+// Tampilan login akan tetap muncul sampai sesi autentikasi berhasil.
+</script>
+</body></html>
