@@ -121,7 +121,7 @@ button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:b
 <h2>🚶 Pejalan Kaki</h2>
 <p style="font-size:13px;color:#6b7280;margin-top:-6px">Tambahkan pejalan kaki yang terlibat, termasuk kondisi korban.</p>
 <div id="pedestrianList"></div>
-<button type="button" class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
+<button class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
 </div>
 
 </div>
@@ -158,19 +158,30 @@ const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',m
 async function simpan(){
  const kendaraan=collectVehicles(),pejalanKaki=collectPedestrians();
  const korban=calculateVictims(kendaraan,pejalanKaki);
- const item={nomor:$('nomor').value.trim(),tanggal:$('tanggal').value,waktu:$('waktu').value||null,
+ const {data:authData,error:authError}=await sb.auth.getUser();
+ if(authError||!authData?.user){alert('Sesi login tidak ditemukan. Silakan login kembali.');return}
+ const user=authData.user;
+ const item={user_id:user.id,nomor:$('nomor').value.trim(),tanggal:$('tanggal').value,waktu:$('waktu').value||null,
  lokasi:$('lokasi').value.trim(),kecamatan:$('kecamatan').value.trim(),petugas_pelapor:$('petugasPelapor').value.trim(),jenis:$('jenis').value,md:korban.md,lb:korban.lb,lr:korban.lr,
- kerugian:+$('kerugian').value||0,keterangan:$('keterangan').value.trim(),kendaraan,pejalan_kaki:pejalanKaki};
+ kerugian:+$('kerugian').value||0,keterangan:$('keterangan').value.trim(),kendaraan:Array.isArray(kendaraan)?kendaraan:[],pejalan_kaki:Array.isArray(pejalanKaki)?pejalanKaki:[]};
  if(!item.tanggal||!item.lokasi||!item.kecamatan||!item.petugas_pelapor){alert('Tanggal, lokasi, kecamatan, dan petugas pelapor wajib diisi.');return}
  const btn=document.querySelector('.actions .primary'); if(btn)btn.disabled=true;
  try{
   let error;
-  if(editId){({error}=await sb.from('kejadian').update(item).eq('id',editId));}
-  else {const result=await sb.from('kejadian').insert(item); error=result.error;}
+  if(editId){
+   const result=await sb.from('kejadian').update(item).eq('id',editId).select().single();
+   error=result.error;
+  }else{
+   const result=await sb.from('kejadian').insert(item).select().single();
+   error=result.error;
+  }
   if(error)throw error;
   await loadData(); resetForm(); render(); alert(editId?'Data berhasil diperbarui.':'Data berhasil disimpan ke database online.');
- }catch(e){alert('Gagal menyimpan data: '+(e.message||e));}
- finally{if(btn)btn.disabled=false;}
+ }catch(e){
+  console.error('Save error:',e);
+  const detail=e?.message||e?.details||e?.hint||String(e);
+  alert('Gagal menyimpan data.\n\n'+detail);
+ }finally{if(btn)btn.disabled=false;}
 }
 function edit(id){
  const x=data.find(a=>a.id===id);if(!x)return;editId=id;$('formTitle').textContent='Edit Kejadian';
@@ -268,18 +279,82 @@ async function loadData(){
  if(error)throw error; data=(rows||[]).map(normalizeRow); updateLocationOptions();
 }
 function showLoginError(msg){const el=$('loginError');el.textContent=msg;el.style.display=msg?'block':'none';}
-async function login(){
- showLoginError(''); const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
- if(!email||!password){showLoginError('Email dan password wajib diisi.');return}
- const btn=$('loginButton');btn.disabled=true;btn.textContent='Memproses...';
- try{const {data:authData,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;await startApp(authData.user);}
- catch(e){showLoginError('Login gagal. Periksa email dan password.');}
- finally{btn.disabled=false;btn.textContent='🔑 Masuk';}
-}
-async function startApp(user){currentUser=user;$('userBadge').textContent=user.email||'';$('loginScreen').classList.add('app-hidden');$('appShell').classList.remove('app-hidden');try{await loadData();render();}catch(e){$('loginScreen').classList.remove('app-hidden');$('appShell').classList.add('app-hidden');showLoginError('Gagal mengambil data dari database: '+(e.message||e));}}
-async function logout(){await sb.auth.signOut();currentUser=null;data=[];$('appShell').classList.add('app-hidden');$('loginScreen').classList.remove('app-hidden');$('loginEmail').value='';$('loginPassword').value='';}
 let currentUser=null;
-sb.auth.onAuthStateChange((event,session)=>{if(session&&session.user){startApp(session.user);}else{$('loginScreen').classList.remove('app-hidden');}});
+let appStarting=false;
+
+async function login(){
+ showLoginError('');
+ const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
+ if(!email||!password){showLoginError('Email dan password wajib diisi.');return}
+ const btn=$('loginButton');
+ btn.disabled=true;btn.textContent='Memproses...';
+ try{
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  // startApp() dipanggil oleh listener auth agar tidak dijalankan dua kali.
+ }catch(e){
+  console.error('Login error:',e);
+  showLoginError('Login gagal. Periksa email dan password.');
+ }finally{
+  btn.disabled=false;btn.textContent='🔑 Masuk';
+ }
+}
+
+async function startApp(user){
+ if(!user)return;
+ if(appStarting && currentUser?.id===user.id)return;
+ appStarting=true;
+ currentUser=user;
+ $('userBadge').textContent=user.email||'';
+ $('loginScreen').classList.add('app-hidden');
+ $('appShell').classList.remove('app-hidden');
+ showLoginError('');
+ try{
+  await loadData();
+  render();
+ }catch(e){
+  console.error('Database load error:',e);
+  // Login tetap dianggap berhasil. Jangan kembalikan pengguna ke layar login
+  // hanya karena pengambilan data gagal.
+  data=[];
+  render();
+  alert('Login berhasil, tetapi data dari database belum dapat dimuat. Silakan coba muat ulang halaman.\n\nDetail: '+(e.message||e));
+ }finally{
+  appStarting=false;
+ }
+}
+
+async function logout(){
+ try{await sb.auth.signOut();}
+ finally{
+  currentUser=null;data=[];
+  $('appShell').classList.add('app-hidden');
+  $('loginScreen').classList.remove('app-hidden');
+  $('loginEmail').value='';$('loginPassword').value='';
+ }
+}
+
+// Listener ini menjadi satu-satunya jalur untuk memulai aplikasi setelah login.
+sb.auth.onAuthStateChange((event,session)=>{
+ if(session&&session.user){
+  setTimeout(()=>startApp(session.user),0);
+ }else if(event==='SIGNED_OUT'){
+  currentUser=null;
+  $('appShell').classList.add('app-hidden');
+  $('loginScreen').classList.remove('app-hidden');
+ }
+});
+
+// Pulihkan sesi yang masih tersimpan ketika halaman dibuka/direfresh.
+(async()=>{
+ try{
+  const {data:sessionData,error}=await sb.auth.getSession();
+  if(error)throw error;
+  if(sessionData?.session?.user)await startApp(sessionData.session.user);
+ }catch(e){
+  console.error('Session restore error:',e);
+ }
+})();
 
 function togglePihakType(){
  const k=$('pihakKendaraan'), p=$('pihakPejalan');
@@ -365,15 +440,11 @@ function addPedestrian(p={}) {
  list.appendChild(div);
 }
 function collectPedestrians(){
-  return [...document.querySelectorAll('#pedestrianList .vehicle')].map(v=>({
-   nama:v.querySelector('.ped-nama')?.value.trim()||'',
-   nik:v.querySelector('.ped-nik')?.value.trim()||'',
-   gender:v.querySelector('.ped-gender')?.value||'',
-   umur:+(v.querySelector('.ped-umur')?.value||0)||0,
-   alamat:v.querySelector('.ped-alamat')?.value.trim()||'',
-   kondisi:v.querySelector('.ped-kondisi')?.value||'Tidak Luka',
-   keterangan:v.querySelector('.ped-keterangan')?.value.trim()||''
- })).filter(p=>p.nama||p.nik||p.alamat||p.keterangan||p.umur);
+ return [...document.querySelectorAll('#pedestrianList .vehicle')].map(v=>({
+  nama:v.querySelector('.ped-nama').value.trim(),nik:v.querySelector('.ped-nik').value.trim(),gender:v.querySelector('.ped-gender').value,
+  umur:+v.querySelector('.ped-umur').value||0,alamat:v.querySelector('.ped-alamat').value.trim(),kondisi:v.querySelector('.ped-kondisi').value,
+  keterangan:v.querySelector('.ped-keterangan').value.trim()
+ }));
 }
 
 document.addEventListener('input', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
