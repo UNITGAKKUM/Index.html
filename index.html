@@ -409,7 +409,7 @@ function addPassenger(id,p={}) {
  box.appendChild(row);
 }
 function collectVehicles(){
- return [...document.querySelectorAll('.vehicle')].map(v=>({
+ return [...document.querySelectorAll('#vehicleList .vehicle')].map(v=>({
   plat:v.querySelector('.v-plat').value.trim(),jenis:v.querySelector('.v-jenis').value,merek:v.querySelector('.v-merek').value.trim(),kondisi:v.querySelector('.v-kondisi').value.trim(),
   pengemudi:{nama:v.querySelector('.d-nama').value.trim(),nik:v.querySelector('.d-nik').value.trim(),gender:v.querySelector('.d-gender').value,umur:+v.querySelector('.d-umur').value||0,alamat:v.querySelector('.d-alamat').value.trim(),sim:v.querySelector('.d-sim').value.trim(),jenisSim:v.querySelector('.d-jenisSim').value.trim(),kondisi:v.querySelector('.d-kondisi').value.trim()},
   penumpang:[...v.querySelectorAll('.passengers .person')].map(p=>({nama:p.querySelector('.p-nama').value.trim(),nik:p.querySelector('.p-nik').value.trim(),gender:p.querySelector('.p-gender').value,umur:+p.querySelector('.p-umur').value||0,alamat:p.querySelector('.p-alamat').value.trim(),kondisi:p.querySelector('.p-kondisi').value.trim(),keterangan:p.querySelector('.p-keterangan').value.trim()}))
