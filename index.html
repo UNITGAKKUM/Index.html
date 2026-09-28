@@ -121,7 +121,7 @@ button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:b
 <h2>🚶 Pejalan Kaki</h2>
 <p style="font-size:13px;color:#6b7280;margin-top:-6px">Tambahkan pejalan kaki yang terlibat, termasuk kondisi korban.</p>
 <div id="pedestrianList"></div>
-<button class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
+<button type="button" class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
 </div>
 
 </div>
@@ -365,11 +365,15 @@ function addPedestrian(p={}) {
  list.appendChild(div);
 }
 function collectPedestrians(){
- return [...document.querySelectorAll('#pedestrianList .vehicle')].map(v=>({
-  nama:v.querySelector('.ped-nama').value.trim(),nik:v.querySelector('.ped-nik').value.trim(),gender:v.querySelector('.ped-gender').value,
-  umur:+v.querySelector('.ped-umur').value||0,alamat:v.querySelector('.ped-alamat').value.trim(),kondisi:v.querySelector('.ped-kondisi').value,
-  keterangan:v.querySelector('.ped-keterangan').value.trim()
- }));
+  return [...document.querySelectorAll('#pedestrianList .vehicle')].map(v=>({
+   nama:v.querySelector('.ped-nama')?.value.trim()||'',
+   nik:v.querySelector('.ped-nik')?.value.trim()||'',
+   gender:v.querySelector('.ped-gender')?.value||'',
+   umur:+(v.querySelector('.ped-umur')?.value||0)||0,
+   alamat:v.querySelector('.ped-alamat')?.value.trim()||'',
+   kondisi:v.querySelector('.ped-kondisi')?.value||'Tidak Luka',
+   keterangan:v.querySelector('.ped-keterangan')?.value.trim()||''
+ })).filter(p=>p.nama||p.nik||p.alamat||p.keterangan||p.umur);
 }
 
 document.addEventListener('input', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
