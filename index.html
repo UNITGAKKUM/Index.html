@@ -133,6 +133,12 @@ button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:b
 <h2>Daftar Kejadian</h2>
 <div class="filters">
 <input id="cari" placeholder="🔎 Cari lokasi/nomor/jenis..." oninput="render()">
+ <select id="filterKorban" onchange="render()">
+  <option value="">Semua Korban</option>
+  <option value="MD">MD - Meninggal Dunia</option>
+  <option value="LB">LB - Luka Berat</option>
+  <option value="LR">LR - Luka Ringan</option>
+ </select>
 <input id="dari" type="date" onchange="render()">
 <input id="sampai" type="date" onchange="render()">
 <button class="primary" onclick="exportExcel()">📊 Export Excel</button>
@@ -213,8 +219,8 @@ function closeView(){$('viewModal').classList.remove('show')}
 
 function resetForm(){editId=null; $('vehicleList').innerHTML=''; vehicleCount=0; $('pedestrianList').innerHTML=''; pedestrianCount=0;$('formTitle').textContent='Tambah Kejadian';['nomor','tanggal','waktu','lokasi','kecamatan','petugasPelapor','keterangan'].forEach(k=>$(k).value='');['kerugian'].forEach(k=>$(k).value=0); $('korbanSummary').value='Meninggal: 0 | Luka Berat: 0 | Luka Ringan: 0';$('jenis').selectedIndex=0;$('pihakKendaraan').checked=true;$('pihakPejalan').checked=false;togglePihakType()}
 function render(){
- const q=$('cari').value.toLowerCase(),d1=$('dari').value,d2=$('sampai').value;
- const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2)).sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
+ const q=$('cari').value.toLowerCase(),korbanFilter=$('filterKorban').value,d1=$('dari').value,d2=$('sampai').value;
+ const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!korbanFilter||(korbanFilter==='MD'?Number(x.md)>0:korbanFilter==='LB'?Number(x.lb)>0:Number(x.lr)>0))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2)).sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
  $('total').textContent=rows.length;$('meninggal').textContent=rows.reduce((s,x)=>s+x.md,0);$('luka').textContent=rows.reduce((s,x)=>s+x.lb+x.lr,0);$('rugi').textContent=rupiah(rows.reduce((s,x)=>s+x.kerugian,0));
  $('tbody').innerHTML=rows.length?rows.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nomor||'-')}</td><td>${fmt(x.tanggal)} ${x.waktu||''}</td><td>${esc(x.lokasi)}</td><td>${esc(x.kecamatan||'-')}</td><td>${esc(x.petugasPelapor||'-')}</td><td>${esc(x.jenis)}</td><td>MD: ${x.md}<br>LB: ${x.lb}<br>LR: ${x.lr}</td><td>${rupiah(x.kerugian)}</td><td><button class="primary" onclick="lihat('${x.id}')">Lihat</button> <button class="secondary" onclick="edit('${x.id}')">Edit</button> <button class="danger" onclick="hapus('${x.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="10" class="empty">Belum ada data.</td></tr>'; updateDashboard();
 }
@@ -222,8 +228,8 @@ function fmt(s){if(!s)return'-';const [y,m,d]=s.split('-');return `${d}-${m}-${y
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function exportExcel(){
  const headers=['No','Nomor Laporan','Tanggal','Waktu','Lokasi','Kecamatan','Petugas Pelapor','Jenis Tabrakan','Meninggal Dunia','Nama Korban Meninggal Dunia','Luka Berat','Luka Ringan','Nama Korban Luka','Kerugian Material (Rp)','Keterangan'];
- const q=$('cari').value.toLowerCase(),d1=$('dari').value,d2=$('sampai').value;
- const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2))
+ const q=$('cari').value.toLowerCase(),korbanFilter=$('filterKorban').value,d1=$('dari').value,d2=$('sampai').value;
+ const rows=data.filter(x=>(!q||[x.nomor,x.lokasi,x.kecamatan,x.petugasPelapor,x.jenis,x.keterangan].join(' ').toLowerCase().includes(q))&&(!korbanFilter||(korbanFilter==='MD'?Number(x.md)>0:korbanFilter==='LB'?Number(x.lb)>0:Number(x.lr)>0))&&(!d1||x.tanggal>=d1)&&(!d2||x.tanggal<=d2))
    .sort((a,b)=>(b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu));
  const detail=[headers,...rows.map((x,i)=>{const names=getVictimNames(x);return [i+1,x.nomor,x.tanggal,x.waktu,x.lokasi,x.kecamatan,x.petugasPelapor||'',x.jenis,x.md,names.md.join(', '),x.lb,x.lr,names.luka.join(', '),x.kerugian,x.keterangan]})];
  const kendaraan=[['No','Nomor Laporan','Plat Nomor','Jenis Kendaraan','Merek/Tipe','Kondisi Kendaraan']];
@@ -409,7 +415,7 @@ function addPassenger(id,p={}) {
  box.appendChild(row);
 }
 function collectVehicles(){
- return [...document.querySelectorAll('#vehicleList .vehicle')].map(v=>({
+ return [...document.querySelectorAll('.vehicle')].map(v=>({
   plat:v.querySelector('.v-plat').value.trim(),jenis:v.querySelector('.v-jenis').value,merek:v.querySelector('.v-merek').value.trim(),kondisi:v.querySelector('.v-kondisi').value.trim(),
   pengemudi:{nama:v.querySelector('.d-nama').value.trim(),nik:v.querySelector('.d-nik').value.trim(),gender:v.querySelector('.d-gender').value,umur:+v.querySelector('.d-umur').value||0,alamat:v.querySelector('.d-alamat').value.trim(),sim:v.querySelector('.d-sim').value.trim(),jenisSim:v.querySelector('.d-jenisSim').value.trim(),kondisi:v.querySelector('.d-kondisi').value.trim()},
   penumpang:[...v.querySelectorAll('.passengers .person')].map(p=>({nama:p.querySelector('.p-nama').value.trim(),nik:p.querySelector('.p-nik').value.trim(),gender:p.querySelector('.p-gender').value,umur:+p.querySelector('.p-umur').value||0,alamat:p.querySelector('.p-alamat').value.trim(),kondisi:p.querySelector('.p-kondisi').value.trim(),keterangan:p.querySelector('.p-keterangan').value.trim()}))
@@ -450,8 +456,9 @@ function collectPedestrians(){
 document.addEventListener('input', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
 document.addEventListener('change', e=>{if(e.target.closest('#vehicleList')||e.target.closest('#pedestrianList')) updateVictimSummary();});
 togglePihakType();
-setPeriod('month');
-function isoDate(d){return d.toISOString().slice(0,10)}
+// Saat pertama dibuka, tampilkan seluruh data agar rekap kecamatan sama dengan total data.
+clearPeriod();
+function isoDate(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
 function setPeriod(type){
  const now=new Date(), to=isoDate(now); let from=new Date(now);
  if(type==='today'){}
