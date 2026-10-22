@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<title>Data Kecelakaan</title>
+<title>APLIKASI DATA LAKA LANTAS</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f6fa;color:#1f2937}
 header{background:#0f4c81;color:white;padding:18px 20px;position:sticky;top:0;z-index:5}
@@ -121,11 +121,11 @@ button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:b
 <h2>🚶 Pejalan Kaki</h2>
 <p style="font-size:13px;color:#6b7280;margin-top:-6px">Tambahkan pejalan kaki yang terlibat, termasuk kondisi korban.</p>
 <div id="pedestrianList"></div>
-<button class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
+<button type="button" class="primary" onclick="addPedestrian()">＋ Tambah Pejalan Kaki</button>
 </div>
 
 </div>
-<div class="actions"><button class="primary" onclick="simpan()">💾 Simpan Data</button><button class="secondary" onclick="resetForm()">↩ Reset</button></div>
+<div class="actions"><button type="button" class="primary" onclick="simpan()">💾 Simpan Data</button><button type="button" class="secondary" onclick="resetForm()">↩ Reset</button></div>
 </section>
 
 
@@ -162,7 +162,19 @@ const $=id=>document.getElementById(id);
 const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0);
 
 async function simpan(){
- const kendaraan=collectVehicles(),pejalanKaki=collectPedestrians();
+ // Ambil data pihak terlibat langsung dari form dan pastikan data pejalan kaki
+ // berupa array objek sederhana yang aman dikirim sebagai JSON ke Supabase.
+ const kendaraan=collectVehicles();
+ const pejalanKaki=collectPedestrians().map(p=>({
+  nama:String(p.nama||'').trim(), nik:String(p.nik||'').trim(),
+  gender:String(p.gender||''), umur:Number(p.umur)||0,
+  alamat:String(p.alamat||'').trim(), kondisi:String(p.kondisi||'Tidak Luka'),
+  keterangan:String(p.keterangan||'').trim()
+ }));
+ if($('pihakPejalan').checked && pejalanKaki.length===0){
+  alert('Pejalan Kaki dipilih, tetapi belum ada data yang ditambahkan. Tekan tombol “Tambah Pejalan Kaki” lalu isi datanya.');
+  return;
+ }
  const korban=calculateVictims(kendaraan,pejalanKaki);
  const {data:authData,error:authError}=await sb.auth.getUser();
  if(authError||!authData?.user){alert('Sesi login tidak ditemukan. Silakan login kembali.');return}
@@ -185,8 +197,8 @@ async function simpan(){
   await loadData(); resetForm(); render(); alert(editId?'Data berhasil diperbarui.':'Data berhasil disimpan ke database online.');
  }catch(e){
   console.error('Save error:',e);
-  const detail=e?.message||e?.details||e?.hint||String(e);
-  alert('Gagal menyimpan data.\n\n'+detail);
+  const detail=[e?.message,e?.details,e?.hint,e?.code?('Kode: '+e.code):''].filter(Boolean).join('\n');
+  alert('Gagal menyimpan data.\n\n'+(detail||String(e))+'\n\nJika data pejalan kaki sudah diisi, jangan tutup halaman dulu. Catat pesan ini untuk pemeriksaan database.');
  }finally{if(btn)btn.disabled=false;}
 }
 function edit(id){
@@ -415,7 +427,7 @@ function addPassenger(id,p={}) {
  box.appendChild(row);
 }
 function collectVehicles(){
- return [...document.querySelectorAll('.vehicle')].map(v=>({
+ return [...document.querySelectorAll('#vehicleList .vehicle')].map(v=>({
   plat:v.querySelector('.v-plat').value.trim(),jenis:v.querySelector('.v-jenis').value,merek:v.querySelector('.v-merek').value.trim(),kondisi:v.querySelector('.v-kondisi').value.trim(),
   pengemudi:{nama:v.querySelector('.d-nama').value.trim(),nik:v.querySelector('.d-nik').value.trim(),gender:v.querySelector('.d-gender').value,umur:+v.querySelector('.d-umur').value||0,alamat:v.querySelector('.d-alamat').value.trim(),sim:v.querySelector('.d-sim').value.trim(),jenisSim:v.querySelector('.d-jenisSim').value.trim(),kondisi:v.querySelector('.d-kondisi').value.trim()},
   penumpang:[...v.querySelectorAll('.passengers .person')].map(p=>({nama:p.querySelector('.p-nama').value.trim(),nik:p.querySelector('.p-nik').value.trim(),gender:p.querySelector('.p-gender').value,umur:+p.querySelector('.p-umur').value||0,alamat:p.querySelector('.p-alamat').value.trim(),kondisi:p.querySelector('.p-kondisi').value.trim(),keterangan:p.querySelector('.p-keterangan').value.trim()}))
